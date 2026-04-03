@@ -119,7 +119,7 @@ export class QueryResultsPanel implements vscode.WebviewViewProvider {
     background: var(--header-bg); text-align: left;
     padding: 5px 8px; border-bottom: 2px solid var(--border);
     font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none;
-    font-size: 12px;
+    font-size: 12px; text-align: center;
   }
   th:hover { background: var(--hover-bg); }
   td { padding: 3px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; max-width: 350px; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }

@@ -235,7 +235,168 @@
         "mac": "cmd+enter",
         "when": "editorTextFocus && resourceLangId == psql"
       }
-    ]
+    ],
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "[*]": {
+          "textMateRules": [
+            {
+              "scope": "keyword.other.dml.psql",
+              "settings": { "foreground": "#C586C0", "fontStyle": "bold" }
+            },
+            {
+              "scope": "keyword.other.dml.secondary.psql",
+              "settings": { "foreground": "#C586C0" }
+            },
+            {
+              "scope": "keyword.other.ddl.create.psql",
+              "settings": { "foreground": "#C586C0", "fontStyle": "bold" }
+            },
+            {
+              "scope": "keyword.other.ddl.object.psql",
+              "settings": { "foreground": "#C586C0" }
+            },
+            {
+              "scope": "keyword.other.ddl.constraint.psql",
+              "settings": { "foreground": "#D4A0D0" }
+            },
+            {
+              "scope": "keyword.other.ddl.index.psql",
+              "settings": { "foreground": "#D4A0D0" }
+            },
+            {
+              "scope": "keyword.other.clause.psql",
+              "settings": { "foreground": "#569CD6", "fontStyle": "bold" }
+            },
+            {
+              "scope": "keyword.other.order.psql",
+              "settings": { "foreground": "#569CD6" }
+            },
+            {
+              "scope": "keyword.other.set.psql",
+              "settings": { "foreground": "#569CD6", "fontStyle": "bold" }
+            },
+            {
+              "scope": "keyword.other.cte.psql",
+              "settings": { "foreground": "#569CD6", "fontStyle": "bold" }
+            },
+            {
+              "scope": "keyword.other.subquery.psql",
+              "settings": { "foreground": "#569CD6" }
+            },
+            {
+              "scope": "keyword.operator.logical.psql",
+              "settings": { "foreground": "#569CD6" }
+            },
+            {
+              "scope": "keyword.other.join.psql",
+              "settings": { "foreground": "#4EC9B0", "fontStyle": "bold" }
+            },
+            {
+              "scope": "keyword.control.psql",
+              "settings": { "foreground": "#C586C0" }
+            },
+            {
+              "scope": "keyword.other.transaction.psql",
+              "settings": { "foreground": "#C586C0", "fontStyle": "italic" }
+            },
+            {
+              "scope": "keyword.other.window.psql",
+              "settings": { "foreground": "#4EC9B0" }
+            },
+            {
+              "scope": "keyword.other.psql",
+              "settings": { "foreground": "#C586C0" }
+            },
+            {
+              "scope": "storage.type.psql",
+              "settings": { "foreground": "#4EC9B0" }
+            },
+            {
+              "scope": "storage.type.array.psql",
+              "settings": { "foreground": "#4EC9B0" }
+            },
+            {
+              "scope": [
+                "support.function.string.psql",
+                "support.function.datetime.psql",
+                "support.function.math.psql",
+                "support.function.json.psql",
+                "support.function.array.psql",
+                "support.function.misc.psql"
+              ],
+              "settings": { "foreground": "#DCDCAA" }
+            },
+            {
+              "scope": "support.function.aggregate.psql",
+              "settings": { "foreground": "#DCDCAA", "fontStyle": "bold" }
+            },
+            {
+              "scope": "support.function.cast.psql",
+              "settings": { "foreground": "#DCDCAA" }
+            },
+            {
+              "scope": "constant.language.boolean.psql",
+              "settings": { "foreground": "#569CD6" }
+            },
+            {
+              "scope": "constant.language.null.psql",
+              "settings": { "foreground": "#569CD6", "fontStyle": "italic" }
+            },
+            {
+              "scope": [
+                "constant.numeric.float.psql",
+                "constant.numeric.integer.psql",
+                "constant.numeric.hex.psql"
+              ],
+              "settings": { "foreground": "#B5CEA8" }
+            },
+            {
+              "scope": "string.quoted.single.psql",
+              "settings": { "foreground": "#CE9178" }
+            },
+            {
+              "scope": "string.unquoted.dollar.psql",
+              "settings": { "foreground": "#CE9178" }
+            },
+            {
+              "scope": "comment.line.double-dash.psql",
+              "settings": { "foreground": "#6A9955", "fontStyle": "italic" }
+            },
+            {
+              "scope": "comment.block.psql",
+              "settings": { "foreground": "#6A9955", "fontStyle": "italic" }
+            },
+            {
+              "scope": "entity.name.schema.psql",
+              "settings": { "foreground": "#9CDCFE" }
+            },
+            {
+              "scope": "entity.name.table.psql",
+              "settings": { "foreground": "#9CDCFE" }
+            },
+            {
+              "scope": "variable.parameter.psql",
+              "settings": { "foreground": "#9CDCFE" }
+            },
+            {
+              "scope": "variable.other.psql",
+              "settings": { "foreground": "#9CDCFE" }
+            },
+            {
+              "scope": [
+                "keyword.operator.comparison.psql",
+                "keyword.operator.arithmetic.psql",
+                "keyword.operator.concatenation.psql",
+                "keyword.operator.json.psql",
+                "keyword.operator.range.psql"
+              ],
+              "settings": { "foreground": "#D4D4D4" }
+            }
+          ]
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
