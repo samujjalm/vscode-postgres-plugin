@@ -79,7 +79,7 @@
       },
       {
         "command": "postgres-mtls.selectConnection",
-        "title": "Select Connection for File",
+        "title": "Change DB Connection",
         "category": "PostgreSQL mTLS",
         "icon": "$(database)"
       },
@@ -197,6 +197,23 @@
           "command": "postgres-mtls.runQuery",
           "when": "resourceLangId == psql",
           "group": "navigation"
+        },
+        {
+          "command": "postgres-mtls.selectConnection",
+          "when": "resourceLangId == psql",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "postgres-mtls.selectConnection",
+          "when": "resourceLangId == psql",
+          "group": "z_postgres@1"
+        },
+        {
+          "command": "postgres-mtls.runQuery",
+          "when": "resourceLangId == psql",
+          "group": "z_postgres@2"
         }
       ]
     },

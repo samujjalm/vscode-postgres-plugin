@@ -18,24 +18,34 @@ export function activate(context: vscode.ExtensionContext) {
   const saved = context.workspaceState.get<[string, string][]>('fileConnectionMap', []);
   fileConnectionMap = new Map(saved);
 
+  // --- Schema cache (connId → schema string) ---
+  const schemaCache = new Map<string, string>();
+
+  async function getSchema(connId: string): Promise<string> {
+    if (schemaCache.has(connId)) { return schemaCache.get(connId)!; }
+    if (!connManager.isConnected(connId)) { return 'public'; }
+    try {
+      const result = await connManager.executeQuery(connId, 'SHOW search_path');
+      const raw = result.rows[0]?.search_path as string ?? 'public';
+      // search_path can be e.g. '"$user", public' — extract the effective schemas
+      const schema = raw.replace(/"\$user",?\s*/g, '').trim() || 'public';
+      schemaCache.set(connId, schema);
+      return schema;
+    } catch {
+      return 'public';
+    }
+  }
+
+  // Clear schema cache on connect/disconnect
+  connManager.onDidChangeConnection(() => schemaCache.clear());
+
   // --- Status bar item ---
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBarItem.command = 'postgres-mtls.selectConnection';
   statusBarItem.tooltip = 'Click to change PostgreSQL connection for this file';
   context.subscriptions.push(statusBarItem);
 
-  // --- Editor top-line decoration showing connection info ---
-  const connInfoDecorationType = vscode.window.createTextEditorDecorationType({
-    isWholeLine: true,
-    after: {
-      margin: '0 0 0 0',
-      color: new vscode.ThemeColor('editorLineNumber.foreground'),
-      fontStyle: 'italic',
-    },
-  });
-  context.subscriptions.push(connInfoDecorationType);
-
-  function updateStatusBar() {
+  async function updateStatusBar() {
     const editor = vscode.window.activeTextEditor;
     if (!editor || editor.document.languageId !== 'psql') {
       statusBarItem.hide();
@@ -48,53 +58,19 @@ export function activate(context: vscode.ExtensionContext) {
 
     if (config) {
       const connected = connManager.isConnected(config.id);
+      const schema = connected ? await getSchema(config.id) : 'public';
       const icon = connected ? '$(database)' : '$(circle-outline)';
-      statusBarItem.text = `${icon} ${config.name}  |  ${config.database}@${config.host}:${config.port}`;
+      statusBarItem.text = `${icon} ${config.name}  \u2502  ${config.database}  \u2502  ${schema}`;
       statusBarItem.backgroundColor = connected
         ? undefined
         : new vscode.ThemeColor('statusBarItem.warningBackground');
-      statusBarItem.tooltip = `Connection: ${config.name}\nDatabase: ${config.database}\nHost: ${config.host}:${config.port}\nUser: ${config.user}\nStatus: ${connected ? 'Connected' : 'Disconnected'}\n\nClick to change`;
+      statusBarItem.tooltip = `Connection: ${config.name}\nDatabase: ${config.database}\nSchema: ${schema}\nHost: ${config.host}:${config.port}\nUser: ${config.user}\nStatus: ${connected ? 'Connected' : 'Disconnected'}\n\nClick to change`;
     } else {
       statusBarItem.text = '$(plug) Select DB Connection';
       statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
       statusBarItem.tooltip = 'No connection selected — click to choose';
     }
     statusBarItem.show();
-
-    // Update the top-of-file decoration
-    updateEditorDecoration(editor);
-  }
-
-  function updateEditorDecoration(editor: vscode.TextEditor) {
-    if (editor.document.languageId !== 'psql') {
-      editor.setDecorations(connInfoDecorationType, []);
-      return;
-    }
-
-    const fileUri = editor.document.uri.toString();
-    const connId = fileConnectionMap.get(fileUri);
-    const config = connId ? connManager.getConfig(connId) : undefined;
-
-    if (config) {
-      const connected = connManager.isConnected(config.id);
-      const status = connected ? '\u2022 connected' : '\u25cb disconnected';
-      const label = `    ${config.name}  \u2502  ${config.database}  \u2502  ${config.user}@${config.host}:${config.port}  \u2502  ${status}`;
-      const decoration: vscode.DecorationOptions = {
-        range: new vscode.Range(0, 0, 0, 0),
-        renderOptions: {
-          after: { contentText: label },
-        },
-      };
-      editor.setDecorations(connInfoDecorationType, [decoration]);
-    } else {
-      const decoration: vscode.DecorationOptions = {
-        range: new vscode.Range(0, 0, 0, 0),
-        renderOptions: {
-          after: { contentText: '    \u26a0 No connection selected \u2014 click status bar or press Cmd+Shift+P \u2192 "Select Connection for File"' },
-        },
-      };
-      editor.setDecorations(connInfoDecorationType, [decoration]);
-    }
   }
 
   context.subscriptions.push(
@@ -187,10 +163,36 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   // --- Register providers ---
+  // --- CodeLens: clickable connection info on line 1 ---
+  const codeLensProvider: vscode.CodeLensProvider = {
+    onDidChangeCodeLenses: connManager.onDidChangeConnection,
+    provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
+      if (document.languageId !== 'psql') { return []; }
+      const fileUri = document.uri.toString();
+      const connId = fileConnectionMap.get(fileUri);
+      const config = connId ? connManager.getConfig(connId) : undefined;
+      const range = new vscode.Range(0, 0, 0, 0);
+
+      if (config) {
+        const connected = connManager.isConnected(config.id);
+        const dot = connected ? '\u25CF' : '\u25CB';
+        return [new vscode.CodeLens(range, {
+          title: `${dot} ${config.name}  \u2502  ${config.database}  — click to change`,
+          command: 'postgres-mtls.selectConnection',
+        })];
+      }
+      return [new vscode.CodeLens(range, {
+        title: '\u26A0 No connection — click to select',
+        command: 'postgres-mtls.selectConnection',
+      })];
+    },
+  };
+
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider('postgresConnections', connTree),
     vscode.window.registerTreeDataProvider('postgresDatabaseObjects', dbTree),
     vscode.window.registerWebviewViewProvider(QueryResultsPanel.viewType, resultsPanel),
+    vscode.languages.registerCodeLensProvider({ language: 'psql' }, codeLensProvider),
   );
 
   // Set context for panel visibility
@@ -327,7 +329,7 @@ export function activate(context: vscode.ExtensionContext) {
   // View Table Data
   context.subscriptions.push(
     vscode.commands.registerCommand('postgres-mtls.viewTableData', async (item: any) => {
-      const connId = connManager.getActiveConnectionId();
+      const connId = item.connId || connManager.getActiveConnectionId();
       if (!connId) { return; }
 
       const schema = item.schemaName || 'public';
@@ -350,7 +352,7 @@ export function activate(context: vscode.ExtensionContext) {
   // View Table Structure
   context.subscriptions.push(
     vscode.commands.registerCommand('postgres-mtls.viewTableStructure', async (item: any) => {
-      const connId = connManager.getActiveConnectionId();
+      const connId = item.connId || connManager.getActiveConnectionId();
       if (!connId) { return; }
 
       const schema = item.schemaName || 'public';

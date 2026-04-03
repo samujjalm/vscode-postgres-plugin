@@ -52,6 +52,10 @@ export class ConnectionManager {
     return undefined;
   }
 
+  getConnectedIds(): string[] {
+    return Array.from(this.connections.keys());
+  }
+
   async addConnection(config: ConnectionConfig): Promise<void> {
     this.configs.set(config.id, config);
     await this.saveConfigs();
@@ -106,6 +110,17 @@ export class ConnectionManager {
       },
     });
 
+    // Disconnect existing connection if any (e.g. stale/errored)
+    if (this.connections.has(id)) {
+      await this.disconnect(id);
+    }
+
+    // Handle connection errors so the client doesn't crash the process
+    client.on('error', () => {
+      this.connections.delete(id);
+      this._onDidChangeConnection.fire();
+    });
+
     await client.connect();
     this.connections.set(id, client);
     this._onDidChangeConnection.fire();
@@ -114,8 +129,8 @@ export class ConnectionManager {
   async disconnect(id: string): Promise<void> {
     const client = this.connections.get(id);
     if (client) {
-      await client.end();
       this.connections.delete(id);
+      try { await client.end(); } catch { /* already closed */ }
       this._onDidChangeConnection.fire();
     }
   }
@@ -127,7 +142,19 @@ export class ConnectionManager {
     }
 
     const start = Date.now();
-    const result = await client.query(sql);
+    let result;
+    try {
+      result = await client.query(sql);
+    } catch (err: unknown) {
+      // If the connection died, clean it up so reconnect works
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('connection') || msg.includes('terminated') || msg.includes('not queryable')) {
+        this.connections.delete(id);
+        this._onDidChangeConnection.fire();
+        throw new Error(`Connection lost. Please reconnect and try again.`);
+      }
+      throw err;
+    }
     const duration = Date.now() - start;
 
     const columns = result.fields?.map(f => f.name) ?? [];

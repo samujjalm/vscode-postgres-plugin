@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ConnectionManager } from './connectionManager';
 
-type DbTreeNode = SchemaNode | CategoryNode | TableNode | ViewNode | FunctionNode | ColumnNode | IndexNode;
+type DbTreeNode = ConnectionNode | SchemaNode | CategoryNode | TableNode | ViewNode | FunctionNode | ColumnNode | IndexNode;
 
 export class DatabaseTreeProvider implements vscode.TreeDataProvider<DbTreeNode> {
   private _onDidChangeTreeData = new vscode.EventEmitter<DbTreeNode | undefined>();
@@ -20,29 +20,36 @@ export class DatabaseTreeProvider implements vscode.TreeDataProvider<DbTreeNode>
   }
 
   async getChildren(element?: DbTreeNode): Promise<DbTreeNode[]> {
-    const connId = this.connectionManager.getActiveConnectionId();
-    if (!connId) { return []; }
+    const connIds = this.connectionManager.getConnectedIds();
+    if (connIds.length === 0) { return []; }
 
+    // Top level: show connected databases
     if (!element) {
-      return this.getSchemas(connId);
+      return connIds.map(id => {
+        const config = this.connectionManager.getConfig(id)!;
+        return new ConnectionNode(id, config.name, config.database);
+      });
+    }
+    if (element instanceof ConnectionNode) {
+      return this.getSchemas(element.connId);
     }
     if (element instanceof SchemaNode) {
       return [
-        new CategoryNode('Tables', 'tables', element.schemaName, connId),
-        new CategoryNode('Views', 'views', element.schemaName, connId),
-        new CategoryNode('Functions', 'functions', element.schemaName, connId),
+        new CategoryNode('Tables', 'tables', element.schemaName, element.connId),
+        new CategoryNode('Views', 'views', element.schemaName, element.connId),
+        new CategoryNode('Functions', 'functions', element.schemaName, element.connId),
       ];
     }
     if (element instanceof CategoryNode) {
       switch (element.category) {
-        case 'tables': return this.getTables(connId, element.schemaName);
-        case 'views': return this.getViews(connId, element.schemaName);
-        case 'functions': return this.getFunctions(connId, element.schemaName);
+        case 'tables': return this.getTables(element.connId, element.schemaName);
+        case 'views': return this.getViews(element.connId, element.schemaName);
+        case 'functions': return this.getFunctions(element.connId, element.schemaName);
       }
     }
     if (element instanceof TableNode) {
-      const columns = await this.getColumns(connId, element.schemaName, element.tableName);
-      const indexes = await this.getIndexes(connId, element.schemaName, element.tableName);
+      const columns = await this.getColumns(element.connId, element.schemaName, element.tableName);
+      const indexes = await this.getIndexes(element.connId, element.schemaName, element.tableName);
       return [...columns, ...indexes];
     }
     return [];
@@ -54,7 +61,7 @@ export class DatabaseTreeProvider implements vscode.TreeDataProvider<DbTreeNode>
        WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
        ORDER BY schema_name`
     );
-    return result.rows.map(r => new SchemaNode(r.schema_name as string));
+    return result.rows.map(r => new SchemaNode(r.schema_name as string, connId));
   }
 
   private async getTables(connId: string, schema: string): Promise<TableNode[]> {
@@ -63,7 +70,7 @@ export class DatabaseTreeProvider implements vscode.TreeDataProvider<DbTreeNode>
        WHERE table_schema = '${schema}' AND table_type = 'BASE TABLE'
        ORDER BY table_name`
     );
-    return result.rows.map(r => new TableNode(r.table_name as string, schema));
+    return result.rows.map(r => new TableNode(r.table_name as string, schema, connId));
   }
 
   private async getViews(connId: string, schema: string): Promise<ViewNode[]> {
@@ -123,8 +130,25 @@ export class DatabaseTreeProvider implements vscode.TreeDataProvider<DbTreeNode>
   }
 }
 
+class ConnectionNode extends vscode.TreeItem {
+  constructor(
+    public readonly connId: string,
+    name: string,
+    database: string,
+  ) {
+    super(name, vscode.TreeItemCollapsibleState.Collapsed);
+    this.description = database;
+    this.iconPath = new vscode.ThemeIcon('database', new vscode.ThemeColor('charts.green'));
+    this.contextValue = 'connectedDatabase';
+    this.tooltip = `${name} — ${database}`;
+  }
+}
+
 class SchemaNode extends vscode.TreeItem {
-  constructor(public readonly schemaName: string) {
+  constructor(
+    public readonly schemaName: string,
+    public readonly connId: string,
+  ) {
     super(schemaName, vscode.TreeItemCollapsibleState.Collapsed);
     this.iconPath = new vscode.ThemeIcon('symbol-namespace');
     this.contextValue = 'schema';
@@ -148,6 +172,7 @@ class TableNode extends vscode.TreeItem {
   constructor(
     public readonly tableName: string,
     public readonly schemaName: string,
+    public readonly connId: string,
   ) {
     super(tableName, vscode.TreeItemCollapsibleState.Collapsed);
     this.iconPath = new vscode.ThemeIcon('symbol-class');
@@ -175,7 +200,7 @@ class FunctionNode extends vscode.TreeItem {
     public readonly schemaName: string,
   ) {
     super(functionName, vscode.TreeItemCollapsibleState.None);
-    this.description = `→ ${returnType}`;
+    this.description = `\u2192 ${returnType}`;
     this.iconPath = new vscode.ThemeIcon('symbol-function');
     this.contextValue = 'function';
   }
@@ -190,7 +215,7 @@ class ColumnNode extends vscode.TreeItem {
     isPrimaryKey: boolean,
   ) {
     super(name, vscode.TreeItemCollapsibleState.None);
-    const pkLabel = isPrimaryKey ? '🔑 ' : '';
+    const pkLabel = isPrimaryKey ? '\uD83D\uDD11 ' : '';
     const nullLabel = isNullable ? '' : ' NOT NULL';
     this.description = `${pkLabel}${dataType}${nullLabel}`;
     this.tooltip = `${name} ${dataType}${nullLabel}${defaultValue ? ` DEFAULT ${defaultValue}` : ''}${isPrimaryKey ? ' (PK)' : ''}`;
