@@ -201,8 +201,8 @@ postgres-rw/
 
 | Shortcut                     | Action      |
 |------------------------------|-------------|
-| `Cmd+Shift+Enter` (Mac)     | Run query   |
-| `Ctrl+Shift+Enter` (Win/Linux) | Run query |
+| `Cmd+Enter` (Mac)     | Run query   |
+| `Ctrl+Enter` (Win/Linux) | Run query |
 
 ## License
 
