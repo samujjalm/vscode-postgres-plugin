@@ -38,7 +38,7 @@
     "grammars": [
       {
         "language": "psql",
-        "scopeName": "source.sql",
+        "scopeName": "source.psql",
         "path": "./syntaxes/psql.tmLanguage.json"
       }
     ],

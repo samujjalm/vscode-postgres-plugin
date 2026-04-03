@@ -156,7 +156,6 @@ export class QueryResultsPanel implements vscode.WebviewViewProvider {
     </div>
     <button onclick="exportCsv()">Export CSV</button>
   </div>
-  <div class="query-preview">${escapeHtml(query.length > 500 ? query.slice(0, 500) + '...' : query)}</div>
   ${result.columns.length > 0
     ? `<div class="table-wrapper">
         <table>

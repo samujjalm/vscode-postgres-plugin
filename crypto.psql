@@ -1,7 +1,4 @@
-select * from transaction limit 6;
-
-
-select * from eth_reward_distribution_batch limit 3;
+select * from wallet limit 100;
 
 
 

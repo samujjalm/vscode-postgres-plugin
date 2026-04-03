@@ -4,6 +4,7 @@ import { ConnectionsTreeProvider, ConnectionItem } from './connectionsTreeProvid
 import { DatabaseTreeProvider } from './databaseTreeProvider';
 import { QueryResultsPanel } from './queryResultsPanel';
 import { showConnectionForm } from './connectionForm';
+import { createCompletionProvider, invalidateCache } from './completionProvider';
 
 // Maps file URI string → connection config ID
 let fileConnectionMap: Map<string, string>;
@@ -84,12 +85,6 @@ export function activate(context: vscode.ExtensionContext) {
     fileConnectionMap.set(fileUri, connId);
     await context.workspaceState.update('fileConnectionMap', Array.from(fileConnectionMap.entries()));
     updateStatusBar();
-    // Also refresh decoration on all visible psql editors
-    for (const editor of vscode.window.visibleTextEditors) {
-      if (editor.document.uri.toString() === fileUri) {
-        updateEditorDecoration(editor);
-      }
-    }
   }
 
   // --- Helper: get connection for current file, prompting if needed ---
@@ -188,12 +183,26 @@ export function activate(context: vscode.ExtensionContext) {
     },
   };
 
+  // --- IntelliSense completion provider ---
+  const completionProvider = createCompletionProvider(
+    connManager,
+    (uri) => fileConnectionMap.get(uri),
+  );
+
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider('postgresConnections', connTree),
     vscode.window.registerTreeDataProvider('postgresDatabaseObjects', dbTree),
     vscode.window.registerWebviewViewProvider(QueryResultsPanel.viewType, resultsPanel),
     vscode.languages.registerCodeLensProvider({ language: 'psql' }, codeLensProvider),
+    vscode.languages.registerCompletionItemProvider(
+      { language: 'psql' },
+      completionProvider,
+      '.', // trigger after dot for schema.table and table.column
+    ),
   );
+
+  // Invalidate IntelliSense cache on connect/disconnect
+  connManager.onDidChangeConnection(() => invalidateCache());
 
   // Set context for panel visibility
   const updateContext = () => {

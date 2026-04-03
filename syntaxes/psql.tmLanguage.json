@@ -1,5 +1,5 @@
 {
-  "scopeName": "source.sql",
+  "scopeName": "source.psql",
   "name": "PostgreSQL",
   "patterns": [
     { "include": "source.sql" }
