@@ -203,7 +203,7 @@ function getFormHtml(existing?: ConnectionConfig): string {
   <div class="field">
     <label for="name">Name</label>
     <div class="hint">A friendly name to identify this connection</div>
-    <input type="text" id="name" placeholder="e.g. crypto-transfer" value="${v(existing?.name)}" />
+    <input type="text" id="name" placeholder="e.g. weather-app" value="${v(existing?.name)}" />
     <div class="error-msg" id="name-error">Name is required</div>
   </div>
 
@@ -228,7 +228,7 @@ function getFormHtml(existing?: ConnectionConfig): string {
     </div>
     <div class="field">
       <label for="database">Database</label>
-      <input type="text" id="database" placeholder="e.g. crypto_transfer" value="${v(existing?.database)}" />
+      <input type="text" id="database" placeholder="e.g. weather_db" value="${v(existing?.database)}" />
       <div class="error-msg" id="database-error">Database is required</div>
     </div>
   </div>

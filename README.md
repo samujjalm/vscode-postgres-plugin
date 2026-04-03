@@ -24,11 +24,11 @@ Each connection requires:
 
 | Field    | Description                          | Example                                                                                     |
 |----------|--------------------------------------|---------------------------------------------------------------------------------------------|
-| Name     | Friendly display name                | `crypto-transfer`                                                                           |
+| Name     | Friendly display name                | `weather-app-db`                                                                           |
 | Host     | PostgreSQL/Teleport proxy host       | `teleport-proxy-internal-02603afb6b39269e.elb.eu-central-1.amazonaws.com`                   |
 | Port     | Connection port                      | `3080`                                                                                      |
 | User     | Database user                        | `teleport_admin`                                                                            |
-| Database | Target database name                 | `crypto_transfer`                                                                           |
+| Database | Target database name                 | `weather_app`                                                                           |
 | CA       | Path to CA certificate (.pem)        | `~/.tsh/keys/teleport.internal.corp.example.com/cas/corporate.pem`                          |
 | Cert     | Path to client certificate (.crt)    | `~/.tsh/keys/teleport.internal.corp.example.com/user@example.com-db/staging/db-name.crt`    |
 | Key      | Path to client private key (.key)    | `~/.tsh/keys/teleport.internal.corp.example.com/user@example.com-db/staging/db-name.key`    |
