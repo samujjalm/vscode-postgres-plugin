@@ -5,6 +5,7 @@ import { DatabaseTreeProvider } from './databaseTreeProvider';
 import { QueryResultsPanel } from './queryResultsPanel';
 import { showConnectionForm } from './connectionForm';
 import { createCompletionProvider, invalidateCache } from './completionProvider';
+import { importFromTeleport } from './teleportImport';
 
 // Maps file URI string → connection config ID
 let fileConnectionMap: Map<string, string>;
@@ -225,7 +226,19 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Add Connection
+  // Add from Teleport
+  context.subscriptions.push(
+    vscode.commands.registerCommand('postgres-mtls.addFromTeleport', async () => {
+      const config = await importFromTeleport();
+      if (config) {
+        await connManager.addConnection(config);
+        vscode.window.showInformationMessage(`Connection "${config.name}" imported from Teleport.`);
+        updateStatusBar();
+      }
+    })
+  );
+
+  // Add Connection (Manual)
   context.subscriptions.push(
     vscode.commands.registerCommand('postgres-mtls.addConnection', async () => {
       const config = await showConnectionForm();

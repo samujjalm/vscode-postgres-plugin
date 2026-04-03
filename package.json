@@ -73,9 +73,15 @@
     "commands": [
       {
         "command": "postgres-mtls.addConnection",
-        "title": "Add Connection",
+        "title": "Add Connection (Manual)",
         "category": "PostgreSQL mTLS",
         "icon": "$(add)"
+      },
+      {
+        "command": "postgres-mtls.addFromTeleport",
+        "title": "Add from Teleport",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(cloud-download)"
       },
       {
         "command": "postgres-mtls.selectConnection",
@@ -145,6 +151,11 @@
     ],
     "menus": {
       "view/title": [
+        {
+          "command": "postgres-mtls.addFromTeleport",
+          "when": "view == postgresConnections",
+          "group": "navigation"
+        },
         {
           "command": "postgres-mtls.addConnection",
           "when": "view == postgresConnections",
