@@ -1,4 +1,5 @@
-select * from wallet limit 100;
+select * from outgoing_transaction_saga_state order by transaction_created_at desc limit 10;
+select * from rebalancing limit 10;
 
 
 

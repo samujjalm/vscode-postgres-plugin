@@ -2,6 +2,363 @@
   "scopeName": "source.psql",
   "name": "PostgreSQL",
   "patterns": [
-    { "include": "source.sql" }
-  ]
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#dollar-quoted-strings" },
+    { "include": "#numbers" },
+    { "include": "#operators" },
+    { "include": "#punctuation" },
+    { "include": "#dml-keywords" },
+    { "include": "#ddl-keywords" },
+    { "include": "#clause-keywords" },
+    { "include": "#logical-keywords" },
+    { "include": "#join-keywords" },
+    { "include": "#control-keywords" },
+    { "include": "#transaction-keywords" },
+    { "include": "#pg-functions" },
+    { "include": "#aggregate-functions" },
+    { "include": "#window-functions" },
+    { "include": "#data-types" },
+    { "include": "#constants" },
+    { "include": "#variables" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-dash.psql",
+          "match": "--.*$"
+        },
+        {
+          "name": "comment.block.psql",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "patterns": [
+            { "include": "#comments" }
+          ]
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.single.psql",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.psql",
+              "match": "''"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.psql",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.psql",
+              "match": "\"\""
+            }
+          ]
+        },
+        {
+          "comment": "E'...' escape strings",
+          "name": "string.quoted.single.escape.psql",
+          "begin": "[eE]'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.psql",
+              "match": "\\\\[\\\\nrtbfav0']|\\\\x[0-9a-fA-F]{1,2}|\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}"
+            }
+          ]
+        }
+      ]
+    },
+    "dollar-quoted-strings": {
+      "patterns": [
+        {
+          "comment": "Dollar-quoted string e.g. $$body$$ or $tag$body$tag$",
+          "name": "string.unquoted.dollar.psql",
+          "begin": "(\\$[a-zA-Z_]*\\$)",
+          "end": "\\1",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.string.begin.psql" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.definition.string.end.psql" }
+          }
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.float.psql",
+          "match": "\\b\\d+\\.\\d+([eE][+-]?\\d+)?\\b"
+        },
+        {
+          "name": "constant.numeric.integer.psql",
+          "match": "\\b\\d+\\b"
+        },
+        {
+          "name": "constant.numeric.hex.psql",
+          "match": "\\b0[xX][0-9a-fA-F]+\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.comparison.psql",
+          "match": "<=|>=|<>|!=|<|>|="
+        },
+        {
+          "name": "keyword.operator.arithmetic.psql",
+          "match": "\\+|-|\\*|/|%|\\^"
+        },
+        {
+          "name": "keyword.operator.concatenation.psql",
+          "match": "\\|\\|"
+        },
+        {
+          "name": "keyword.operator.json.psql",
+          "match": "->|->>|#>|#>>|@>|<@|\\?\\||\\?&|\\?"
+        },
+        {
+          "name": "keyword.operator.range.psql",
+          "match": "::"
+        },
+        {
+          "name": "keyword.operator.pattern.psql",
+          "match": "~\\*?|!~\\*?"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.separator.comma.psql",
+          "match": ","
+        },
+        {
+          "name": "punctuation.terminator.psql",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.bracket.round.psql",
+          "match": "[()]"
+        },
+        {
+          "name": "punctuation.bracket.square.psql",
+          "match": "[\\[\\]]"
+        }
+      ]
+    },
+    "dml-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.other.dml.psql",
+          "match": "(?i)\\b(SELECT|INSERT|UPDATE|DELETE|MERGE|TRUNCATE|COPY|UPSERT)\\b"
+        },
+        {
+          "name": "keyword.other.dml.secondary.psql",
+          "match": "(?i)\\b(INTO|VALUES|SET|FROM|RETURNING|OVERRIDING|SYSTEM|VALUE|ON\\s+CONFLICT|DO\\s+NOTHING|DO\\s+UPDATE)\\b"
+        }
+      ]
+    },
+    "ddl-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.other.ddl.create.psql",
+          "match": "(?i)\\b(CREATE|ALTER|DROP|RENAME|ADD|COLUMN|COMMENT)\\b"
+        },
+        {
+          "name": "keyword.other.ddl.object.psql",
+          "match": "(?i)\\b(TABLE|VIEW|INDEX|SCHEMA|DATABASE|SEQUENCE|TRIGGER|FUNCTION|PROCEDURE|TYPE|EXTENSION|MATERIALIZED|TEMPORARY|TEMP|UNLOGGED|IF\\s+NOT\\s+EXISTS|IF\\s+EXISTS|CASCADE|RESTRICT|REPLACE|OR\\s+REPLACE)\\b"
+        },
+        {
+          "name": "keyword.other.ddl.constraint.psql",
+          "match": "(?i)\\b(CONSTRAINT|PRIMARY\\s+KEY|FOREIGN\\s+KEY|REFERENCES|UNIQUE|CHECK|EXCLUDE|NOT\\s+NULL|DEFAULT|GENERATED|ALWAYS|IDENTITY|SERIAL|BIGSERIAL|SMALLSERIAL)\\b"
+        },
+        {
+          "name": "keyword.other.ddl.index.psql",
+          "match": "(?i)\\b(USING|BTREE|HASH|GIST|GIN|BRIN|SPGIST|CONCURRENTLY|INCLUDE|FILLFACTOR|TABLESPACE|REINDEX)\\b"
+        }
+      ]
+    },
+    "clause-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.other.clause.psql",
+          "match": "(?i)\\b(WHERE|HAVING|GROUP\\s+BY|ORDER\\s+BY|LIMIT|OFFSET|FETCH|FIRST|NEXT|ROWS?|ONLY|PERCENT|WITH\\s+TIES|DISTINCT|DISTINCT\\s+ON|ALL|AS|ON|USING|LATERAL|TABLESAMPLE)\\b"
+        },
+        {
+          "name": "keyword.other.order.psql",
+          "match": "(?i)\\b(ASC|DESC|NULLS\\s+FIRST|NULLS\\s+LAST)\\b"
+        },
+        {
+          "name": "keyword.other.set.psql",
+          "match": "(?i)\\b(UNION|INTERSECT|EXCEPT)\\b"
+        },
+        {
+          "name": "keyword.other.cte.psql",
+          "match": "(?i)\\b(WITH|RECURSIVE)\\b"
+        },
+        {
+          "name": "keyword.other.subquery.psql",
+          "match": "(?i)\\b(EXISTS|IN|ANY|SOME|ALL|BETWEEN|LIKE|ILIKE|SIMILAR\\s+TO|IS\\s+DISTINCT\\s+FROM)\\b"
+        }
+      ]
+    },
+    "logical-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.operator.logical.psql",
+          "match": "(?i)\\b(AND|OR|NOT|IS|IS\\s+NOT|IS\\s+NULL|IS\\s+NOT\\s+NULL|IS\\s+TRUE|IS\\s+FALSE|IS\\s+UNKNOWN)\\b"
+        }
+      ]
+    },
+    "join-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.other.join.psql",
+          "match": "(?i)\\b(JOIN|INNER\\s+JOIN|LEFT\\s+JOIN|LEFT\\s+OUTER\\s+JOIN|RIGHT\\s+JOIN|RIGHT\\s+OUTER\\s+JOIN|FULL\\s+JOIN|FULL\\s+OUTER\\s+JOIN|CROSS\\s+JOIN|NATURAL\\s+JOIN|INNER|LEFT|RIGHT|FULL|OUTER|CROSS|NATURAL)\\b"
+        }
+      ]
+    },
+    "control-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.psql",
+          "match": "(?i)\\b(CASE|WHEN|THEN|ELSE|END|IF|ELSIF|ELSEIF|LOOP|WHILE|FOR|FOREACH|EXIT|CONTINUE|RETURN|RAISE|EXCEPTION|NOTICE|PERFORM|EXECUTE|DECLARE|BEGIN|EXCEPTION|GET\\s+DIAGNOSTICS)\\b"
+        },
+        {
+          "name": "keyword.other.psql",
+          "match": "(?i)\\b(EXPLAIN|ANALYZE|VERBOSE|COSTS|BUFFERS|FORMAT|VACUUM|CLUSTER|REFRESH|LISTEN|NOTIFY|LOCK|GRANT|REVOKE|OWNER\\s+TO|SET|SHOW|RESET)\\b"
+        }
+      ]
+    },
+    "transaction-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.other.transaction.psql",
+          "match": "(?i)\\b(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE|PREPARE|WORK|TRANSACTION|ISOLATION\\s+LEVEL|READ\\s+COMMITTED|REPEATABLE\\s+READ|SERIALIZABLE|READ\\s+ONLY|READ\\s+WRITE)\\b"
+        }
+      ]
+    },
+    "pg-functions": {
+      "patterns": [
+        {
+          "comment": "String functions",
+          "name": "support.function.string.psql",
+          "match": "(?i)\\b(concat|concat_ws|format|length|char_length|character_length|octet_length|bit_length|lower|upper|initcap|trim|ltrim|rtrim|btrim|lpad|rpad|left|right|reverse|repeat|replace|translate|substring|substr|position|strpos|overlay|split_part|regexp_match|regexp_matches|regexp_replace|regexp_split_to_array|regexp_split_to_table|encode|decode|md5|sha256|sha512|ascii|chr|quote_ident|quote_literal|quote_nullable|starts_with|string_agg|string_to_array|array_to_string|to_hex)(?=\\s*\\()"
+        },
+        {
+          "comment": "Date/time functions",
+          "name": "support.function.datetime.psql",
+          "match": "(?i)\\b(now|current_date|current_time|current_timestamp|localtime|localtimestamp|clock_timestamp|statement_timestamp|transaction_timestamp|timeofday|age|date_part|date_trunc|extract|isfinite|justify_days|justify_hours|justify_interval|make_date|make_interval|make_time|make_timestamp|make_timestamptz|to_timestamp|to_date|to_char|to_number|generate_series)(?=\\s*\\()"
+        },
+        {
+          "comment": "Math functions",
+          "name": "support.function.math.psql",
+          "match": "(?i)\\b(abs|ceil|ceiling|floor|round|trunc|sign|sqrt|cbrt|power|exp|ln|log|log10|mod|div|random|setseed|pi|degrees|radians|factorial|gcd|lcm|min_scale|trim_scale|width_bucket|scale)(?=\\s*\\()"
+        },
+        {
+          "comment": "JSON/JSONB functions",
+          "name": "support.function.json.psql",
+          "match": "(?i)\\b(json_build_object|json_build_array|json_object|json_array|jsonb_build_object|jsonb_build_array|jsonb_object|json_agg|jsonb_agg|json_object_agg|jsonb_object_agg|json_each|jsonb_each|json_each_text|jsonb_each_text|json_extract_path|jsonb_extract_path|json_extract_path_text|jsonb_extract_path_text|json_array_elements|jsonb_array_elements|json_array_elements_text|jsonb_array_elements_text|json_array_length|jsonb_array_length|json_typeof|jsonb_typeof|jsonb_set|jsonb_insert|jsonb_strip_nulls|jsonb_pretty|jsonb_path_query|jsonb_path_query_array|jsonb_path_query_first|jsonb_path_exists|jsonb_path_match|json_populate_record|jsonb_populate_record|json_populate_recordset|jsonb_populate_recordset|json_to_record|jsonb_to_record|json_to_recordset|jsonb_to_recordset|row_to_json|to_json|to_jsonb)(?=\\s*\\()"
+        },
+        {
+          "comment": "Array functions",
+          "name": "support.function.array.psql",
+          "match": "(?i)\\b(array_agg|array_append|array_cat|array_dims|array_fill|array_length|array_lower|array_ndims|array_position|array_positions|array_prepend|array_remove|array_replace|array_to_json|array_upper|cardinality|unnest|array_to_string|string_to_array)(?=\\s*\\()"
+        },
+        {
+          "comment": "Type casting and conversion",
+          "name": "support.function.cast.psql",
+          "match": "(?i)\\b(CAST|COALESCE|NULLIF|GREATEST|LEAST|CASE)\\b"
+        },
+        {
+          "comment": "Conditional and misc functions",
+          "name": "support.function.misc.psql",
+          "match": "(?i)\\b(coalesce|nullif|greatest|least|current_user|current_schema|current_database|current_setting|session_user|inet_client_addr|inet_server_addr|version|pg_typeof|pg_column_size|pg_size_pretty|pg_total_relation_size|pg_relation_size|pg_indexes_size|pg_table_size|pg_database_size|obj_description|col_description|shobj_description|txid_current|gen_random_uuid|uuid_generate_v4|nextval|currval|setval|lastval|exists|row_number|rank|dense_rank|percent_rank|cume_dist|ntile|lag|lead|first_value|last_value|nth_value)(?=\\s*\\()"
+        }
+      ]
+    },
+    "aggregate-functions": {
+      "patterns": [
+        {
+          "name": "support.function.aggregate.psql",
+          "match": "(?i)\\b(count|sum|avg|min|max|bool_and|bool_or|every|bit_and|bit_or|array_agg|json_agg|jsonb_agg|json_object_agg|jsonb_object_agg|string_agg|xmlagg|corr|covar_pop|covar_samp|regr_avgx|regr_avgy|regr_count|regr_intercept|regr_r2|regr_slope|regr_sxx|regr_sxy|regr_syy|stddev|stddev_pop|stddev_samp|variance|var_pop|var_samp|percentile_cont|percentile_disc|mode)(?=\\s*\\()"
+        }
+      ]
+    },
+    "window-functions": {
+      "patterns": [
+        {
+          "name": "keyword.other.window.psql",
+          "match": "(?i)\\b(OVER|PARTITION\\s+BY|WINDOW|ROWS|RANGE|GROUPS|UNBOUNDED|PRECEDING|FOLLOWING|CURRENT\\s+ROW|EXCLUDE\\s+CURRENT\\s+ROW|EXCLUDE\\s+GROUP|EXCLUDE\\s+TIES|EXCLUDE\\s+NO\\s+OTHERS|FILTER)\\b"
+        }
+      ]
+    },
+    "data-types": {
+      "patterns": [
+        {
+          "name": "storage.type.psql",
+          "match": "(?i)\\b(smallint|integer|int|int2|int4|int8|bigint|decimal|numeric|real|float|float4|float8|double\\s+precision|smallserial|serial|bigserial|money|boolean|bool|bit|bit\\s+varying|varbit|char|character|character\\s+varying|varchar|text|name|bytea|date|time|timetz|timestamp|timestamptz|interval|point|line|lseg|box|path|polygon|circle|cidr|inet|macaddr|macaddr8|uuid|xml|json|jsonb|int4range|int8range|numrange|tsrange|tstzrange|daterange|tsvector|tsquery|oid|regclass|regtype|regproc|regprocedure|void|record|trigger|event_trigger|anyelement|anyarray|anynonarray|anyenum|anyrange|cstring|internal|pg_lsn|pg_snapshot)\\b"
+        },
+        {
+          "comment": "Array type suffix",
+          "name": "storage.type.array.psql",
+          "match": "(?i)\\b(ARRAY)\\b|\\[\\]"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.psql",
+          "match": "(?i)\\b(TRUE|FALSE)\\b"
+        },
+        {
+          "name": "constant.language.null.psql",
+          "match": "(?i)\\b(NULL)\\b"
+        },
+        {
+          "name": "constant.language.star.psql",
+          "match": "\\*"
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "comment": "Positional parameter $1, $2, etc.",
+          "name": "variable.parameter.psql",
+          "match": "\\$\\d+"
+        },
+        {
+          "comment": "PL/pgSQL variable reference",
+          "name": "variable.other.psql",
+          "match": "(?i)\\b(NEW|OLD|TG_NAME|TG_WHEN|TG_LEVEL|TG_OP|TG_RELID|TG_TABLE_NAME|TG_TABLE_SCHEMA|TG_NARGS|TG_ARGV|FOUND|ROW_COUNT|RESULT_OID|PG_CONTEXT|PG_EXCEPTION_DETAIL|PG_EXCEPTION_HINT|PG_EXCEPTION_CONTEXT)\\b"
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "comment": "Schema-qualified identifier: schema.table",
+          "match": "\\b(\\w+)\\s*\\.\\s*(\\w+)\\b",
+          "captures": {
+            "1": { "name": "entity.name.schema.psql" },
+            "2": { "name": "entity.name.table.psql" }
+          }
+        }
+      ]
+    }
+  }
 }
