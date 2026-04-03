@@ -1,0 +1,197 @@
+{
+  "name": "postgres-mtls-explorer",
+  "displayName": "PostgreSQL mTLS Explorer",
+  "description": "Connect to PostgreSQL databases using mTLS (Teleport/Infrastructure Access Control) and browse database objects visually",
+  "version": "0.1.0",
+  "publisher": "samujjal",
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "postgresql",
+    "postgres",
+    "mtls",
+    "teleport",
+    "database",
+    "sql"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "icon": "media/icon.png",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "postgres-mtls-explorer",
+          "title": "PostgreSQL Explorer",
+          "icon": "media/database.svg"
+        }
+      ]
+    },
+    "views": {
+      "postgres-mtls-explorer": [
+        {
+          "id": "postgresConnections",
+          "name": "Connections"
+        },
+        {
+          "id": "postgresDatabaseObjects",
+          "name": "Database Objects"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "postgres-mtls.addConnection",
+        "title": "Add Connection",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(add)"
+      },
+      {
+        "command": "postgres-mtls.editConnection",
+        "title": "Edit Connection",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "postgres-mtls.deleteConnection",
+        "title": "Delete Connection",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "postgres-mtls.connect",
+        "title": "Connect",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "postgres-mtls.disconnect",
+        "title": "Disconnect",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "postgres-mtls.refreshObjects",
+        "title": "Refresh Database Objects",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "postgres-mtls.newQuery",
+        "title": "New SQL Query",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "postgres-mtls.runQuery",
+        "title": "Run Query",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(play)"
+      },
+      {
+        "command": "postgres-mtls.viewTableData",
+        "title": "View Table Data (Top 100)",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(table)"
+      },
+      {
+        "command": "postgres-mtls.viewTableStructure",
+        "title": "View Table Structure",
+        "category": "PostgreSQL mTLS"
+      },
+      {
+        "command": "postgres-mtls.exportCsv",
+        "title": "Export Results as CSV",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(export)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "postgres-mtls.addConnection",
+          "when": "view == postgresConnections",
+          "group": "navigation"
+        },
+        {
+          "command": "postgres-mtls.refreshObjects",
+          "when": "view == postgresDatabaseObjects",
+          "group": "navigation"
+        },
+        {
+          "command": "postgres-mtls.newQuery",
+          "when": "view == postgresDatabaseObjects",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "postgres-mtls.connect",
+          "when": "view == postgresConnections && viewItem == disconnected",
+          "group": "inline"
+        },
+        {
+          "command": "postgres-mtls.disconnect",
+          "when": "view == postgresConnections && viewItem == connected",
+          "group": "inline"
+        },
+        {
+          "command": "postgres-mtls.editConnection",
+          "when": "view == postgresConnections && viewItem =~ /connected|disconnected/",
+          "group": "context@1"
+        },
+        {
+          "command": "postgres-mtls.deleteConnection",
+          "when": "view == postgresConnections && viewItem =~ /connected|disconnected/",
+          "group": "context@2"
+        },
+        {
+          "command": "postgres-mtls.viewTableData",
+          "when": "view == postgresDatabaseObjects && viewItem == table",
+          "group": "inline"
+        },
+        {
+          "command": "postgres-mtls.viewTableStructure",
+          "when": "view == postgresDatabaseObjects && viewItem == table"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "postgres-mtls.runQuery",
+          "when": "resourceLangId == sql",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "postgres-mtls.runQuery",
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
+        "when": "resourceLangId == sql"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/pg": "^8.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}
