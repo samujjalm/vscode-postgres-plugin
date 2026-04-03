@@ -1,23 +1,46 @@
 import * as vscode from 'vscode';
 import { QueryResult } from './types';
 
-export class QueryResultsPanel {
-  private static currentPanel: QueryResultsPanel | undefined;
-  private readonly panel: vscode.WebviewPanel;
-  private disposables: vscode.Disposable[] = [];
+export class QueryResultsPanel implements vscode.WebviewViewProvider {
+  public static readonly viewType = 'postgresQueryResults';
+  private view?: vscode.WebviewView;
+  private pendingUpdate?: { result: QueryResult; query: string };
 
-  private constructor(panel: vscode.WebviewPanel) {
-    this.panel = panel;
-    this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
-    this.panel.webview.onDidReceiveMessage(
-      (msg: { type: string; csv: string }) => {
-        if (msg.type === 'exportCsv') {
-          QueryResultsPanel.exportCsvToFile(msg.csv);
-        }
-      },
-      null,
-      this.disposables
-    );
+  resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken,
+  ): void {
+    this.view = webviewView;
+    webviewView.webview.options = { enableScripts: true };
+
+    webviewView.webview.onDidReceiveMessage((msg: { type: string; csv: string }) => {
+      if (msg.type === 'exportCsv') {
+        QueryResultsPanel.exportCsvToFile(msg.csv);
+      }
+    });
+
+    // If a query was run before the view was visible, show it now
+    if (this.pendingUpdate) {
+      this.update(this.pendingUpdate.result, this.pendingUpdate.query);
+      this.pendingUpdate = undefined;
+    }
+  }
+
+  show(result: QueryResult, query: string): void {
+    if (this.view) {
+      this.view.show(true);
+      this.update(result, query);
+    } else {
+      // View not yet resolved — store for when it becomes visible
+      this.pendingUpdate = { result, query };
+      vscode.commands.executeCommand('postgresQueryResults.focus');
+    }
+  }
+
+  private update(result: QueryResult, query: string): void {
+    if (!this.view) { return; }
+    this.view.webview.html = this.getHtml(result, query);
   }
 
   private static async exportCsvToFile(csv: string): Promise<void> {
@@ -32,31 +55,6 @@ export class QueryResultsPanel {
     }
   }
 
-  static show(result: QueryResult, query: string): QueryResultsPanel {
-    const column = vscode.ViewColumn.Beside;
-
-    if (QueryResultsPanel.currentPanel) {
-      QueryResultsPanel.currentPanel.panel.reveal(column);
-      QueryResultsPanel.currentPanel.update(result, query);
-      return QueryResultsPanel.currentPanel;
-    }
-
-    const panel = vscode.window.createWebviewPanel(
-      'postgresResults',
-      'Query Results',
-      column,
-      { enableScripts: true, retainContextWhenHidden: true }
-    );
-
-    QueryResultsPanel.currentPanel = new QueryResultsPanel(panel);
-    QueryResultsPanel.currentPanel.update(result, query);
-    return QueryResultsPanel.currentPanel;
-  }
-
-  update(result: QueryResult, query: string): void {
-    this.panel.webview.html = this.getHtml(result, query);
-  }
-
   private getHtml(result: QueryResult, query: string): string {
     const escapeHtml = (s: unknown): string =>
       String(s ?? 'NULL')
@@ -65,12 +63,16 @@ export class QueryResultsPanel {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 
-    const headerCells = result.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('');
+    const copyIcon = `<span class="copy-btn" title="Copy to clipboard"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 4h8v8H4z" opacity="0"/><path d="M4 1.5H2a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h1V2.5h8V1.5H4zm1 2h9a.5.5 0 0 1 .5.5v10a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5zm.5 1v9h8v-9h-8z"/></svg></span>`;
+
+    const headerCells = result.columns.map(c =>
+      `<th><span class="cell-content">${escapeHtml(c)}</span>${copyIcon}</th>`
+    ).join('');
     const bodyRows = result.rows.map(row => {
       const cells = result.columns.map(col => {
         const val = row[col];
         const cssClass = val === null || val === undefined ? 'null-value' : '';
-        return `<td class="${cssClass}">${escapeHtml(val)}</td>`;
+        return `<td class="${cssClass}"><span class="cell-content">${escapeHtml(val)}</span>${copyIcon}</td>`;
       }).join('');
       return `<tr>${cells}</tr>`;
     }).join('');
@@ -90,39 +92,59 @@ export class QueryResultsPanel {
     --accent: var(--vscode-focusBorder);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: var(--vscode-font-family); font-size: 13px; color: var(--fg); background: var(--bg); padding: 12px; }
+  body { font-family: var(--vscode-font-family); font-size: 13px; color: var(--fg); background: var(--bg); padding: 8px; }
   .status-bar {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 8px 12px; margin-bottom: 12px;
+    padding: 6px 10px; margin-bottom: 8px;
     background: var(--header-bg); border-radius: 4px;
     font-size: 12px; color: var(--vscode-descriptionForeground);
   }
   .status-bar .info { display: flex; gap: 16px; }
   .status-bar button {
     background: var(--vscode-button-background); color: var(--vscode-button-foreground);
-    border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;
+    border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;
   }
   .status-bar button:hover { background: var(--vscode-button-hoverBackground); }
   .query-preview {
-    padding: 8px 12px; margin-bottom: 12px;
+    padding: 6px 10px; margin-bottom: 8px;
     background: var(--header-bg); border-radius: 4px;
-    font-family: var(--vscode-editor-font-family); font-size: 12px;
-    white-space: pre-wrap; max-height: 80px; overflow-y: auto;
+    font-family: var(--vscode-editor-font-family); font-size: 11px;
+    white-space: pre-wrap; max-height: 60px; overflow-y: auto;
     border-left: 3px solid var(--accent);
   }
-  .table-wrapper { overflow: auto; max-height: calc(100vh - 160px); border: 1px solid var(--border); border-radius: 4px; }
+  .table-wrapper { overflow: auto; max-height: calc(100vh - 110px); border: 1px solid var(--border); border-radius: 4px; }
   table { width: 100%; border-collapse: collapse; }
   th {
     position: sticky; top: 0; z-index: 1;
     background: var(--header-bg); text-align: left;
-    padding: 6px 10px; border-bottom: 2px solid var(--border);
+    padding: 5px 8px; border-bottom: 2px solid var(--border);
     font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none;
+    font-size: 12px;
   }
   th:hover { background: var(--hover-bg); }
-  td { padding: 4px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; max-width: 400px; overflow: hidden; text-overflow: ellipsis; }
+  td { padding: 3px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; max-width: 350px; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+  th, td { position: relative; }
+  th { padding-right: 24px; }
+  td { padding-right: 24px; }
+  .cell-content { display: inline; }
+  .copy-btn {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    opacity: 0; cursor: pointer; color: var(--vscode-descriptionForeground);
+    display: inline-flex; align-items: center; padding: 2px; border-radius: 3px;
+    transition: opacity 0.15s;
+  }
+  .copy-btn:hover { color: var(--fg); background: var(--hover-bg); }
+  th:hover .copy-btn, td:hover .copy-btn { opacity: 1; }
+  .copy-toast {
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: var(--vscode-button-background); color: var(--vscode-button-foreground);
+    padding: 4px 12px; border-radius: 4px; font-size: 11px;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 100;
+  }
+  .copy-toast.show { opacity: 1; }
   tr:hover td { background: var(--hover-bg); }
   .null-value { color: var(--vscode-disabledForeground); font-style: italic; }
-  .no-results { text-align: center; padding: 40px; color: var(--vscode-disabledForeground); }
+  .no-results { text-align: center; padding: 24px; color: var(--vscode-disabledForeground); }
 </style>
 </head>
 <body>
@@ -144,6 +166,7 @@ export class QueryResultsPanel {
       </div>`
     : `<div class="no-results">${result.command || 'Query executed successfully'} — ${result.rowCount} row(s) affected</div>`
   }
+<div class="copy-toast" id="copyToast">Copied!</div>
 <script>
   const vscode = acquireVsCodeApi();
   const data = ${JSON.stringify({ columns: result.columns, rows: result.rows })};
@@ -162,11 +185,24 @@ export class QueryResultsPanel {
     vscode.postMessage({ type: 'exportCsv', csv: [header, ...rows].join('\\n') });
   }
 
+  // Copy button handler
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cell = btn.parentElement;
+      const content = cell.querySelector('.cell-content').textContent;
+      navigator.clipboard.writeText(content).then(() => {
+        const toast = document.getElementById('copyToast');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 1200);
+      });
+    });
+  });
+
   // Column sorting
   document.querySelectorAll('th').forEach((th, i) => {
     let asc = true;
     th.addEventListener('click', () => {
-      const col = data.columns[i];
       const tbody = document.querySelector('tbody');
       const rowEls = Array.from(tbody.querySelectorAll('tr'));
       rowEls.sort((a, b) => {
@@ -183,11 +219,5 @@ export class QueryResultsPanel {
 </script>
 </body>
 </html>`;
-  }
-
-  dispose(): void {
-    QueryResultsPanel.currentPanel = undefined;
-    this.panel.dispose();
-    this.disposables.forEach(d => d.dispose());
   }
 }

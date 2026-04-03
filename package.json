@@ -23,19 +23,30 @@
     "database",
     "sql"
   ],
-  "activationEvents": [
-    "onView:postgresConnections",
-    "onView:postgresDatabaseObjects",
-    "onCommand:postgres-mtls.addConnection"
-  ],
+  "activationEvents": [],
   "main": "./out/extension.js",
   "icon": "media/icon.png",
   "contributes": {
+    "languages": [
+      {
+        "id": "psql",
+        "aliases": ["PostgreSQL", "psql"],
+        "extensions": [".psql"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "psql",
+        "scopeName": "source.sql",
+        "path": "./syntaxes/psql.tmLanguage.json"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "postgres-mtls-explorer",
-          "title": "PostgreSQL Explorer",
+          "title": "PostgreSQL mTLS Explorer",
           "icon": "media/database.svg"
         }
       ]
@@ -50,6 +61,13 @@
           "id": "postgresDatabaseObjects",
           "name": "Database Objects"
         }
+      ],
+      "panel": [
+        {
+          "type": "webview",
+          "id": "postgresQueryResults",
+          "name": "PG Results"
+        }
       ]
     },
     "commands": [
@@ -58,6 +76,12 @@
         "title": "Add Connection",
         "category": "PostgreSQL mTLS",
         "icon": "$(add)"
+      },
+      {
+        "command": "postgres-mtls.selectConnection",
+        "title": "Select Connection for File",
+        "category": "PostgreSQL mTLS",
+        "icon": "$(database)"
       },
       {
         "command": "postgres-mtls.editConnection",
@@ -171,7 +195,7 @@
       "editor/title": [
         {
           "command": "postgres-mtls.runQuery",
-          "when": "resourceLangId == sql",
+          "when": "resourceLangId == psql",
           "group": "navigation"
         }
       ]
@@ -179,9 +203,9 @@
     "keybindings": [
       {
         "command": "postgres-mtls.runQuery",
-        "key": "ctrl+shift+enter",
-        "mac": "cmd+shift+enter",
-        "when": "resourceLangId == sql"
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorTextFocus && resourceLangId == psql"
       }
     ]
   },

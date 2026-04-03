@@ -5,14 +5,213 @@ import { DatabaseTreeProvider } from './databaseTreeProvider';
 import { QueryResultsPanel } from './queryResultsPanel';
 import { showConnectionForm } from './connectionForm';
 
+// Maps file URI string → connection config ID
+let fileConnectionMap: Map<string, string>;
+
 export function activate(context: vscode.ExtensionContext) {
   const connManager = new ConnectionManager(context);
   const connTree = new ConnectionsTreeProvider(connManager);
   const dbTree = new DatabaseTreeProvider(connManager);
+  const resultsPanel = new QueryResultsPanel();
 
+  // Restore file-to-connection mappings
+  const saved = context.workspaceState.get<[string, string][]>('fileConnectionMap', []);
+  fileConnectionMap = new Map(saved);
+
+  // --- Status bar item ---
+  const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  statusBarItem.command = 'postgres-mtls.selectConnection';
+  statusBarItem.tooltip = 'Click to change PostgreSQL connection for this file';
+  context.subscriptions.push(statusBarItem);
+
+  // --- Editor top-line decoration showing connection info ---
+  const connInfoDecorationType = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    after: {
+      margin: '0 0 0 0',
+      color: new vscode.ThemeColor('editorLineNumber.foreground'),
+      fontStyle: 'italic',
+    },
+  });
+  context.subscriptions.push(connInfoDecorationType);
+
+  function updateStatusBar() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.document.languageId !== 'psql') {
+      statusBarItem.hide();
+      return;
+    }
+
+    const fileUri = editor.document.uri.toString();
+    const connId = fileConnectionMap.get(fileUri);
+    const config = connId ? connManager.getConfig(connId) : undefined;
+
+    if (config) {
+      const connected = connManager.isConnected(config.id);
+      const icon = connected ? '$(database)' : '$(circle-outline)';
+      statusBarItem.text = `${icon} ${config.name}  |  ${config.database}@${config.host}:${config.port}`;
+      statusBarItem.backgroundColor = connected
+        ? undefined
+        : new vscode.ThemeColor('statusBarItem.warningBackground');
+      statusBarItem.tooltip = `Connection: ${config.name}\nDatabase: ${config.database}\nHost: ${config.host}:${config.port}\nUser: ${config.user}\nStatus: ${connected ? 'Connected' : 'Disconnected'}\n\nClick to change`;
+    } else {
+      statusBarItem.text = '$(plug) Select DB Connection';
+      statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+      statusBarItem.tooltip = 'No connection selected — click to choose';
+    }
+    statusBarItem.show();
+
+    // Update the top-of-file decoration
+    updateEditorDecoration(editor);
+  }
+
+  function updateEditorDecoration(editor: vscode.TextEditor) {
+    if (editor.document.languageId !== 'psql') {
+      editor.setDecorations(connInfoDecorationType, []);
+      return;
+    }
+
+    const fileUri = editor.document.uri.toString();
+    const connId = fileConnectionMap.get(fileUri);
+    const config = connId ? connManager.getConfig(connId) : undefined;
+
+    if (config) {
+      const connected = connManager.isConnected(config.id);
+      const status = connected ? '\u2022 connected' : '\u25cb disconnected';
+      const label = `    ${config.name}  \u2502  ${config.database}  \u2502  ${config.user}@${config.host}:${config.port}  \u2502  ${status}`;
+      const decoration: vscode.DecorationOptions = {
+        range: new vscode.Range(0, 0, 0, 0),
+        renderOptions: {
+          after: { contentText: label },
+        },
+      };
+      editor.setDecorations(connInfoDecorationType, [decoration]);
+    } else {
+      const decoration: vscode.DecorationOptions = {
+        range: new vscode.Range(0, 0, 0, 0),
+        renderOptions: {
+          after: { contentText: '    \u26a0 No connection selected \u2014 click status bar or press Cmd+Shift+P \u2192 "Select Connection for File"' },
+        },
+      };
+      editor.setDecorations(connInfoDecorationType, [decoration]);
+    }
+  }
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(() => updateStatusBar()),
+    connManager.onDidChangeConnection(() => updateStatusBar()),
+  );
+  updateStatusBar();
+
+  // --- Helper: save file mapping ---
+  async function setFileConnection(fileUri: string, connId: string) {
+    fileConnectionMap.set(fileUri, connId);
+    await context.workspaceState.update('fileConnectionMap', Array.from(fileConnectionMap.entries()));
+    updateStatusBar();
+    // Also refresh decoration on all visible psql editors
+    for (const editor of vscode.window.visibleTextEditors) {
+      if (editor.document.uri.toString() === fileUri) {
+        updateEditorDecoration(editor);
+      }
+    }
+  }
+
+  // --- Helper: get connection for current file, prompting if needed ---
+  async function getConnectionForFile(editor: vscode.TextEditor): Promise<string | undefined> {
+    const fileUri = editor.document.uri.toString();
+    let connId = fileConnectionMap.get(fileUri);
+
+    // Validate the mapped connection still exists
+    if (connId && !connManager.getConfig(connId)) {
+      fileConnectionMap.delete(connId);
+      connId = undefined;
+    }
+
+    if (!connId) {
+      connId = await promptSelectConnection(fileUri);
+      if (!connId) { return undefined; }
+    }
+
+    // Auto-connect if not already connected
+    if (!connManager.isConnected(connId)) {
+      const config = connManager.getConfig(connId)!;
+      try {
+        await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.Notification, title: `Connecting to ${config.name}...` },
+          () => connManager.connect(connId!)
+        );
+        vscode.window.showInformationMessage(`Connected to "${config.name}".`);
+        dbTree.refresh();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Connection failed: ${msg}`);
+        return undefined;
+      }
+    }
+
+    return connId;
+  }
+
+  // --- Select Connection quick pick ---
+  async function promptSelectConnection(fileUri?: string): Promise<string | undefined> {
+    const configs = connManager.getAllConfigs();
+    if (configs.length === 0) {
+      const action = await vscode.window.showWarningMessage(
+        'No connections configured.', 'Add Connection'
+      );
+      if (action === 'Add Connection') {
+        await vscode.commands.executeCommand('postgres-mtls.addConnection');
+      }
+      return undefined;
+    }
+
+    const items = configs.map(c => {
+      const connected = connManager.isConnected(c.id);
+      return {
+        label: `${connected ? '$(database)' : '$(circle-outline)'} ${c.name}`,
+        description: `${c.user}@${c.host}:${c.port}/${c.database}`,
+        detail: connected ? 'Connected' : 'Disconnected — will auto-connect',
+        id: c.id,
+      };
+    });
+
+    const picked = await vscode.window.showQuickPick(items, {
+      title: 'Select PostgreSQL Connection',
+      placeHolder: 'Choose a connection for this file',
+    });
+
+    if (picked && fileUri) {
+      await setFileConnection(fileUri, picked.id);
+    }
+    return picked?.id;
+  }
+
+  // --- Register providers ---
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider('postgresConnections', connTree),
     vscode.window.registerTreeDataProvider('postgresDatabaseObjects', dbTree),
+    vscode.window.registerWebviewViewProvider(QueryResultsPanel.viewType, resultsPanel),
+  );
+
+  // Set context for panel visibility
+  const updateContext = () => {
+    vscode.commands.executeCommand('setContext', 'postgres-mtls.hasConnection', connManager.getAllConfigs().length > 0);
+  };
+  connManager.onDidChangeConnection(updateContext);
+  updateContext();
+
+  // --- Commands ---
+
+  // Select Connection for File
+  context.subscriptions.push(
+    vscode.commands.registerCommand('postgres-mtls.selectConnection', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.document.languageId !== 'psql') {
+        vscode.window.showWarningMessage('Open a .psql file first.');
+        return;
+      }
+      await promptSelectConnection(editor.document.uri.toString());
+    })
   );
 
   // Add Connection
@@ -22,6 +221,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (config) {
         await connManager.addConnection(config);
         vscode.window.showInformationMessage(`Connection "${config.name}" added.`);
+        updateStatusBar();
       }
     })
   );
@@ -50,7 +250,7 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Connect
+  // Connect (from tree view)
   context.subscriptions.push(
     vscode.commands.registerCommand('postgres-mtls.connect', async (item: ConnectionItem) => {
       try {
@@ -84,7 +284,7 @@ export function activate(context: vscode.ExtensionContext) {
   // New SQL Query
   context.subscriptions.push(
     vscode.commands.registerCommand('postgres-mtls.newQuery', async () => {
-      const doc = await vscode.workspace.openTextDocument({ language: 'sql', content: '-- Write your SQL query here\n' });
+      const doc = await vscode.workspace.openTextDocument({ language: 'psql', content: '-- Write your PostgreSQL query here\n' });
       await vscode.window.showTextDocument(doc);
     })
   );
@@ -98,13 +298,9 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      const connId = connManager.getActiveConnectionId();
-      if (!connId) {
-        vscode.window.showWarningMessage('No active database connection. Connect first.');
-        return;
-      }
+      const connId = await getConnectionForFile(editor);
+      if (!connId) { return; }
 
-      // Use selection if available, otherwise the whole document
       const selection = editor.selection;
       const query = selection.isEmpty
         ? editor.document.getText()
@@ -120,8 +316,7 @@ export function activate(context: vscode.ExtensionContext) {
           { location: vscode.ProgressLocation.Notification, title: 'Running query...' },
           () => connManager.executeQuery(connId, query)
         );
-
-        QueryResultsPanel.show(result, query);
+        resultsPanel.show(result, query);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         vscode.window.showErrorMessage(`Query failed: ${msg}`);
@@ -144,7 +339,7 @@ export function activate(context: vscode.ExtensionContext) {
           { location: vscode.ProgressLocation.Notification, title: `Loading ${schema}.${table}...` },
           () => connManager.executeQuery(connId, query)
         );
-        QueryResultsPanel.show(result, query);
+        resultsPanel.show(result, query);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         vscode.window.showErrorMessage(`Failed to load table: ${msg}`);
@@ -167,7 +362,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       try {
         const result = await connManager.executeQuery(connId, query);
-        QueryResultsPanel.show(result, `-- Structure of ${schema}.${table}`);
+        resultsPanel.show(result, `-- Structure of ${schema}.${table}`);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         vscode.window.showErrorMessage(`Failed to load structure: ${msg}`);

@@ -1,7 +1,14 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import { Client } from 'pg';
+import { Client, types } from 'pg';
 import { ConnectionConfig, QueryResult } from './types';
+
+// Return date/timestamp types as raw strings instead of JS Date objects
+types.setTypeParser(1082, (val: string) => val); // date
+types.setTypeParser(1083, (val: string) => val); // time
+types.setTypeParser(1114, (val: string) => val); // timestamp
+types.setTypeParser(1184, (val: string) => val); // timestamptz
+types.setTypeParser(1266, (val: string) => val); // timetz
 
 export class ConnectionManager {
   private connections = new Map<string, Client>();
