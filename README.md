@@ -38,12 +38,16 @@ Or in VS Code: **Extensions** > **...** menu > **Install from VSIX...**
 
 1. Click the **database icon** in the Activity Bar (left sidebar) to open the PostgreSQL Explorer
 2. In the **Connections** panel, click the **cloud icon** (Add from Teleport)
-3. Enter the Teleport database service name (e.g. `crypto-transfer`)
+3. A searchable list of all available PostgreSQL databases from Teleport is displayed — pick one
 4. Select the database user role:
    - `teleport_readonly` — Read-only access
    - `teleport_admin` — Read-write access
    - Or enter a custom user
-5. The extension runs `tsh db login` and `tsh db config` automatically to set up the connection
+5. The extension automatically:
+   - Derives the database name (e.g. `crypto-transfer` → `crypto_transfer`)
+   - Runs `tsh db login --db-user <user> --db-name <db_name> <service>` to generate certificates
+   - Runs `tsh db config --format=cmd <service>` to extract connection settings
+   - Creates the connection (e.g. `crypto-transfer (rw)`)
 
 ### 3. Connect and Query
 
@@ -59,7 +63,9 @@ Or in VS Code: **Extensions** > **...** menu > **Install from VSIX...**
 ### Adding Connections
 
 **From Teleport (recommended):**
-Click the cloud icon or run `Cmd+Shift+P` > **"PostgreSQL mTLS: Add from Teleport"**. Just provide the service name and user role — all certificate paths are configured automatically.
+Click the cloud icon or run `Cmd+Shift+P` > **"PostgreSQL mTLS: Add from Teleport"**. The extension fetches all available PostgreSQL databases from Teleport via `tsh db ls`, lets you pick one from a searchable list, choose a user role, and automatically configures the connection — no manual input of hosts, ports, or certificate paths needed.
+
+> If `tsh db ls` fails (e.g. network issues), it falls back to a manual input box where you can type the service name directly.
 
 **Manual configuration:**
 Click the + icon or run `Cmd+Shift+P` > **"PostgreSQL mTLS: Add Connection (Manual)"**. Fill in the connection form with:
