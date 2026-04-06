@@ -44,7 +44,7 @@ Or in VS Code: **Extensions** > **...** menu > **Install from VSIX...**
    - `teleport_admin` — Read-write access
    - Or enter a custom user
 5. The extension automatically:
-   - Derives the database name (e.g. `crypto-transfer` → `crypto_transfer`)
+   - Derives the database name (e.g. `weather-service` → `weather_service`)
    - Runs `tsh db login --db-user <user> --db-name <db_name> <service>` to generate certificates
    - Runs `tsh db config --format=cmd <service>` to extract connection settings
    - Creates the connection (e.g. `crypto-transfer (rw)`)
@@ -72,11 +72,11 @@ Click the + icon or run `Cmd+Shift+P` > **"PostgreSQL mTLS: Add Connection (Manu
 
 | Field    | Description                          | Example                                                              |
 |----------|--------------------------------------|----------------------------------------------------------------------|
-| Name     | Friendly display name                | `crypto-transfer`                                                    |
+| Name     | Friendly display name                | `weather-service`                                                    |
 | Host     | PostgreSQL/Teleport proxy host       | `teleport-proxy-internal-...elb.eu-central-1.amazonaws.com`          |
 | Port     | Connection port                      | `3080`                                                               |
 | User     | Database user                        | `teleport_admin` or `teleport_readonly`                              |
-| Database | Target database name                 | `crypto_transfer`                                                    |
+| Database | Target database name                 | `weather_service`                                                    |
 | CA       | Path to CA certificate (.pem)        | `~/.tsh/keys/.../cas/corporate.pem`                                  |
 | Cert     | Path to client certificate (.crt)    | `~/.tsh/keys/.../<user>-db/staging/<db>.crt`                         |
 | Key      | Path to client private key (.key)    | `~/.tsh/keys/.../<user>-db/staging/<db>.key`                         |
