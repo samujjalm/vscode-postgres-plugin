@@ -2,7 +2,7 @@
   "name": "postgres-mtls-explorer",
   "displayName": "PostgreSQL mTLS Explorer",
   "description": "Connect to PostgreSQL databases using mTLS (Teleport/Infrastructure Access Control) and browse database objects visually",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "samujjal",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
