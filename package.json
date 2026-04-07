@@ -3,7 +3,7 @@
   "displayName": "PostgreSQL mTLS Explorer",
   "description": "Connect to PostgreSQL databases using mTLS (Teleport/Infrastructure Access Control) and browse database objects visually",
   "version": "0.1.1",
-  "publisher": "samujjal",
+  "publisher": "Samujjal Majumder",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
