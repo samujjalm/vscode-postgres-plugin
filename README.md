@@ -47,7 +47,7 @@ Or in VS Code: **Extensions** > **...** menu > **Install from VSIX...**
    - Derives the database name (e.g. `weather-service` → `weather_service`)
    - Runs `tsh db login --db-user <user> --db-name <db_name> <service>` to generate certificates
    - Runs `tsh db config --format=cmd <service>` to extract connection settings
-   - Creates the connection (e.g. `crypto-transfer (rw)`)
+   - Creates the connection (e.g. `weather-service (rw)`)
 
 ### 3. Connect and Query
 

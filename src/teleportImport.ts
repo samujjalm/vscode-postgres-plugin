@@ -66,8 +66,8 @@ async function pickServiceName(): Promise<string | undefined> {
     // Fallback: let user type the name manually
     return vscode.window.showInputBox({
       title: 'Teleport Database Service Name',
-      prompt: 'Could not list databases. Enter the service name manually (e.g. crypto-transfer)',
-      placeHolder: 'crypto-transfer',
+      prompt: 'Could not list databases. Enter the service name manually (e.g. weather-app)',
+      placeHolder: 'weather-app',
       validateInput: v => v.trim() ? null : 'Service name is required',
     });
   }

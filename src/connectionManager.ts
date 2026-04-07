@@ -1,7 +1,11 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { Client, types } from 'pg';
 import { ConnectionConfig, QueryResult } from './types';
+
+const execFileAsync = promisify(execFile);
 
 // Return date/timestamp types as raw strings instead of JS Date objects
 types.setTypeParser(1082, (val: string) => val); // date
@@ -86,6 +90,9 @@ export class ConnectionManager {
       throw new Error(`Connection config not found: ${id}`);
     }
 
+    // Refresh Teleport certificates via tsh db login
+    await this.refreshTeleportCerts(config);
+
     // Validate certificate files exist
     for (const [label, path] of [
       ['CA certificate', config.caPath],
@@ -124,6 +131,31 @@ export class ConnectionManager {
     await client.connect();
     this.connections.set(id, client);
     this._onDidChangeConnection.fire();
+  }
+
+  /**
+   * Refresh Teleport certificates by running tsh db login.
+   * Derives service name from connection name (strips suffix like "(rw)"),
+   * and uses the database field as --db-name.
+   */
+  private async refreshTeleportCerts(config: ConnectionConfig): Promise<void> {
+    try {
+      await execFileAsync('tsh', ['version']);
+    } catch {
+      // tsh not installed — skip refresh, certs may still be valid
+      return;
+    }
+
+    // Derive service name: strip role suffix like " (rw)" or " (ro)"
+    const serviceName = config.name.replace(/\s*\(.*\)\s*$/, '').trim();
+    const dbName = config.database;
+    const dbUser = config.user;
+
+    try {
+      await execFileAsync('tsh', ['db', 'login', '--db-user', dbUser, '--db-name', dbName, serviceName]);
+    } catch {
+      // Login failed — proceed anyway, existing certs may still be valid
+    }
   }
 
   async disconnect(id: string): Promise<void> {
