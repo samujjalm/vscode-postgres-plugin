@@ -1,6 +1,6 @@
 {
   "name": "sam-postgres-mtls-explorer",
-  "displayName": "PostgreSQL mTLS Explorer",
+  "displayName": "Sam's PostgreSQL mTLS Explorer",
   "description": "Connect to PostgreSQL databases using mTLS (Teleport/Infrastructure Access Control) and browse database objects visually",
   "version": "0.1.1",
   "publisher": "samujjal",
